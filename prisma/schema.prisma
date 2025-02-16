@@ -1,0 +1,185 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+  // url      = env("TURSO_DATABASE_URL")
+  
+}
+
+model User {
+  id                 String             @id @default(cuid())
+  email              String             @unique
+  subscription       Subscription?
+  expenses           Expense[]
+  financialGoals     FinancialGoal[]
+  savings            Savings?
+  checkingAccount    CheckingAccount?
+  categories         Category[]
+  recurringTransactions RecurringTransaction[] 
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String             @unique
+  tier               SubscriptionTier   @default(FREE)
+  billingCycle       BillingCycle       @default(MONTHLY)
+  status             SubscriptionStatus @default(ACTIVE)
+  nextRenewal        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model Expense {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  category           Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId         String
+  amount             Float
+  description        String?
+  isRecurring        Boolean            @default(false)
+  date               DateTime
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model FinancialGoal {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  name               String
+  targetAmount       Float
+  deadline           DateTime?
+  priority           GoalPriority       @default(MEDIUM)
+  status             GoalStatus         @default(ACTIVE)
+  deposits           GoalDeposit[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model GoalDeposit {
+  id                 String             @id @default(cuid())
+  financialGoal      FinancialGoal      @relation(fields: [financialGoalId], references: [id], onDelete: Cascade)
+  financialGoalId    String
+  amount             Float
+  date               DateTime           @default(now())
+}
+
+model Category {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id])
+  userId             String
+  name               String
+  expenses           Expense[]
+}
+
+model Savings {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String             @unique
+  transactions       SavingsTransaction[]
+  updatedAt          DateTime           @updatedAt
+}
+
+model SavingsTransaction {
+  id                 String             @id @default(cuid())
+  savings            Savings            @relation(fields: [savingsId], references: [id], onDelete: Cascade)
+  savingsId          String
+  amount             Float
+  type               TransactionType
+  purpose            String?
+  date               DateTime           @default(now())
+}
+
+model CheckingAccount {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String             @unique
+  transactions       CheckingTransaction[]
+  updatedAt          DateTime           @updatedAt
+}
+
+model CheckingTransaction {
+  id                 String             @id @default(cuid())
+  checking           CheckingAccount    @relation(fields: [checkingId], references: [id], onDelete: Cascade)
+  checkingId         String
+  amount             Float
+  type               CheckingTransactionType
+  description        String?
+  date               DateTime           @default(now())
+}
+
+model RecurringTransaction {
+  id                 String             @id @default(cuid())
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  type               CheckingTransactionType
+  amount             Float
+  frequency          RecurringFrequency
+  nextOccurrence     DateTime
+  processedHistory   ProcessedRecurringTransaction[]
+}
+
+model ProcessedRecurringTransaction {
+  id                 String             @id @default(cuid())
+  recurring          RecurringTransaction @relation(fields: [recurringId], references: [id], onDelete: Cascade)
+  recurringId        String
+  processedAt        DateTime           @default(now())
+}
+
+// Enums remain the same
+enum SubscriptionTier { 
+  FREE
+  PRO
+}
+enum BillingCycle {
+ MONTHLY
+ ANNUALLY
+}
+enum SubscriptionStatus {
+ ACTIVE
+ CANCELLED
+ PAUSED
+}
+enum GoalPriority {
+ LOW
+ MEDIUM
+ HIGH
+}
+enum GoalStatus {
+ ACTIVE
+ COMPLETED
+ FAILED
+}
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+ }
+enum CheckingTransactionType {
+  EXPENSE 
+  INCOME 
+  SAVINGS_DEPOSIT 
+  SAVINGS_WITHDRAWAL 
+  GOAL_DEPOSIT 
+}
+enum RecurringFrequency { 
+  DAILY 
+  WEEKLY 
+  BIWEEKLY 
+  MONTHLY 
+  QUARTERLY 
+  YEARLY 
+}
